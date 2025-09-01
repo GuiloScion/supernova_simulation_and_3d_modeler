@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced 3D Supernova Model Builder</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: radial-gradient(circle at center, #0a0a0f 0%, #000000 100%);
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+        }
+        
+        #canvas-container {
+            flex: 1;
+            position: relative;
+        }
+        
+        #controls-panel {
+            width: 320px;
+            background: linear-gradient(135deg, rgba(15,15,25,0.95) 0%, rgba(25,25,35,0.9) 100%);
+            backdrop-filter: blur(20px);
+            border-left: 1px solid rgba(255,255,255,0.1);
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+        }
+        
+        .panel-section {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .panel-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #4fc3f7;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .control-group {
+            margin-bottom: 15px;
+        }
+        
+        .control-label {
+            display: block;
+            font-size: 12px;
+            color: #b0bec5;
+            margin-bottom: 6px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .control-slider {
+            width: 100%;
+            height: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 4px;
+            outline: none;
+            margin-bottom: 5px;
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+        
+        .control-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: linear-gradient(135deg, #4fc3f7 0%, #29b6f6 100%);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(79,195,247,0.3);
+        }
+        
+        .control-value {
+            color: #4fc3f7;
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #4fc3f7 0%, #29b6f6 100%);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            margin: 3px;
+            box-shadow: 0 4px 15px rgba(79,195,247,0.2);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(79,195,247,0.3);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, #546e7a 0%, #455a64 100%);
+            box-shadow: 0 4px 15px rgba(84,110,122,0.2);
+        }
+        
+        .btn-secondary:hover {
+            box-shadow: 0 8px 25px rgba(84,110,122,0.3);
+        }
+        
+        .layer-control {
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .layer-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #81c784;
+        }
+        
+        .color-picker {
+            width: 40px;
+            height: 25px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 8px;
+        }
+        
+        #info-display {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            font-family: 'SF Mono', monospace;
+            font-size: 11px;
+            max-width: 250px;
+        }
+        
+        .info-item {
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .info-label {
+            color: #90caf9;
+        }
+        
+        .info-value {
+            color: #4fc3f7;
+            font-weight: 600;
+        }
+        
+        .camera-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .camera-btn {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background: rgba(79,195,247,0.2);
+            border: 2px solid rgba(79,195,247,0.4);
+            color: #4fc3f7;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .camera-btn:hover {
+            background: rgba(79,195,247,0.4);
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="canvas-container">
+            <div id="info-display">
+                <div class="info-item">
+                    <span class="info-label">Camera:</span>
+                    <span class="info-value" id="camera-mode">Free</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Vertices:</span>
+                    <span class="info-value" id="vertex-count">0</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Particles:</span>
+                    <span class="info-value" id="particle-count">0</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Layers:</span>
+                    <span class="info-value" id="layer-count">0</span>
+                </div>
+            </div>
+            
+            <div class="camera-controls">
+                <div class="camera-btn" onclick="setCameraPreset('front')" title="Front View">F</div>
+                <div class="camera-btn" onclick="setCameraPreset('side')" title="Side View">S</div>
+                <div class="camera-btn" onclick="setCameraPreset('top')" title="Top View">T</div>
+                <div class="camera-btn" onclick="setCameraPreset('iso')" title="Isometric">I</div>
+            </div>
+        </div>
+        
+        <div id="controls-panel">
+            <div class="panel-section">
+                <div class="panel-title">Core Structure</div>
+                <div class="control-group">
+                    <label class="control-label">Neutron Star Radius</label>
+                    <input type="range" class="control-slider" id="neutronStarRadius" min="1" max="15" value="8" step="0.5">
+                    <span class="control-value" id="neutronStarRadiusValue">8.0 km</span>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Core Density</label>
+                    <input type="range" class="control-slider" id="coreDensity" min="0.1" max="3.0" value="1.5" step="0.1">
+                    <span class="control-value" id="coreDensityValue">1.5 × 10¹⁵ g/cm³</span>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Magnetic Field Strength</label>
+                    <input type="range" class="control-slider" id="magneticField" min="12" max="16" value="15" step="0.1">
+                    <span class="control-value" id="magneticFieldValue">10¹⁵ G</span>
+                </div>
+            </div>
+            
+            <div class="panel-section">
+                <div class="panel-title">Shock Wave</div>
+                <div class="control-group">
+                    <label class="control-label">Shock Radius</label>
+                    <input type="range" class="control-slider" id="shockRadius" min="50" max="500" value="150" step="10">
+                    <span class="control-value" id="shockRadiusValue">150 ly</span>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Shock Velocity</label>
+                    <input type="range" class="control-slider" id="shockVelocity" min="1000" max="30000" value="10000" step="500">
+                    <span class="control-value" id="shockVelocityValue">10000 km/s</span>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Temperature</label>
+                    <input type="range" class="control-slider" id="shockTemp" min="6" max="8" value="7" step="0.1">
+                    <span class="control-value" id="shockTempValue">10⁷ K</span>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Shock Opacity</label>
+                    <input type="range" class="control-slider" id="shockOpacity" min="0.1" max="1.0" value="0.6" step="0.05">
+                    <span class="control-value" id="shockOpacityValue">0.6</span>
+                </div>
+            </div>
+            
+            <div class="panel-section">
+                <div class="panel-title">Ejecta Layers</div>
+                <div class="layer-control">
+                    <div class="layer-title">Inner Ejecta (Fe-peak)</div>
+                    <div class="control-group">
+                        <label class="control-label">Density</label>
+                        <input type="range" class="control-slider" id="innerDensity" min="1000" max="50000" value="20000" step="1000">
+                        <span class="control-value" id="innerDensityValue">20000 particles</span>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Velocity</label>
+                        <input type="range" class="control-slider" id="innerVelocity" min="2000" max="8000" value="4000" step="200">
+                        <span class="control-value" id="innerVelocityValue">4000 km/s</span>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Color</label>
+                        <input type="color" class="color-picker" id="innerColor" value="#ff4444">
+                    </div>
+                </div>
+                
+                <div class="layer-control">
+                    <div class="layer-title">Middle Ejecta (Si, S, Ar)</div>
+                    <div class="control-group">
+                        <label class="control-label">Density</label>
+                        <input type="range" class="control-slider" id="middleDensity" min="5000" max="30000" value="15000" step="1000">
+                        <span class="control-value" id="middleDensityValue">15000 particles</span>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Velocity</label>
+                        <input type="range" class="control-slider" id="middleVelocity" min="5000" max="12000" value="8000" step="200">
+                        <span class="control-value" id="middleVelocityValue">8000 km/s</span>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Color</label>
+                        <input type="color" class="color-picker" id="middleColor" value="#44ff44">
+                    </div>
+                </div>
+                
+                <div class="layer-control">
+                    <div class="layer-title">Outer Ejecta (H, He)</div>
+                    <div class="control-group">
+                        <label class="control-label">Density</label>
+                        <input type="range" class="control-slider" id="outerDensity" min="2000" max="20000" value="10000" step="1000">
+                        <span class="control-value" id="outerDensityValue">10000 particles</span>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Velocity</label>
+                        <input type="range" class="control-slider" id="outerVelocity" min="8000" max="20000" value="15000" step="500">
+                        <span class="control-value" id="outerVelocityValue">15000 km/s</span>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Color</label>
+                        <input type="color" class="color-picker" id="outerColor" value="#4444ff">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel-section">
+                <div class="panel-title">Visual Settings</div>
+                <div class="control-group">
+                    <label class="control-label">Overall Scale</label>
+                    <input type="range" class="control-slider" id="overallScale" min="0.1" max="3.0" value="1.0" step="0.1">
+                    <span class="control-value" id="overallScaleValue">1.0x</span>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Turbulence</label>
+                    <input type="range" class="control-slider" id="turbulence" min="0" max="2" value="1" step="0.1">
+                    <span class="control-value" id="turbulenceValue">1.0</span>
+                </div>
+                <div class="control-group">
+                    <label class="control-label">Glow Intensity</label>
+                    <input type="range" class="control-slider" id="glowIntensity" min="0.1" max="3.0" value="1.5" step="0.1">
+                    <span class="control-value" id="glowIntensityValue">1.5</span>
+                </div>
+            </div>
+            
+            <div class="panel-section">
+                <div class="panel-title">Model Actions</div>
+                <button class="btn" onclick="generateModel()">Generate Model</button>
+                <button class="btn" onclick="randomizeParameters()">Randomize</button>
+                <br>
+                <button class="btn btn-secondary" onclick="exportModel()">Export Model</button>
+                <button class="btn btn-secondary" onclick="savePreset()">Save Preset</button>
+                <br>
+                <button class="btn btn-secondary" onclick="resetToDefaults()">Reset Defaults</button>
+                <button class="btn btn-secondary" onclick="toggleAnimation()">Animate</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let scene, camera, renderer, controls;
+        let neutronStar, shockWave;
+        let ejectaLayers = [];
+        let magneticFieldLines = [];
+        let animationActive = false;
+        let cameraMode = 'free';
+        let clock = new THREE.Clock();
+        
+        // Mouse controls
+        let mouseDown = false;
+        let mouseX = 0, mouseY = 0;
+        let cameraDistance = 300;
+        let cameraTheta = 0;
+        let cameraPhi = Math.PI / 2;
+        
+        // Initialize Three.js
+        function initThreeJS() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x000011);
+            
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+            updateCameraPosition();
+            
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ 
+                antialias: true, 
+                alpha: true,
+                powerPreference: "high-performance"
+            });
+            renderer.setSize(window.innerWidth - 320, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Lighting setup
+            const ambientLight = new THREE.AmbientLight(0x1a1a2e, 0.1);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+            directionalLight.position.set(100, 100, 100);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            // Create starfield
+            createStarfield();
+            
+            // Mouse controls
+            setupMouseControls();
+            
+            // Initial model generation
+            generateModel();
+            
+            // Start render loop
+            animate();
+        }
+        
+        function createStarfield() {
+            const starGeometry = new THREE.BufferGeometry();
+            const starCount = 3000;
+            const positions = new Float32Array(starCount * 3);
+            const colors = new Float32Array(starCount * 3);
+            
+            for (let i = 0; i < starCount; i++) {
+                const i3 = i * 3;
+                
+                // Random position on sphere
+                const radius = 2000 + Math.random() * 3000;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                
+                positions[i3] = radius * Math.sin(phi) * Math.cos(theta);
+                positions[i3 + 1] = radius * Math.sin(phi) * Math.sin(theta);
+                positions[i3 + 2] = radius * Math.cos(phi);
+                
+                // Star color variation
+                const temp = 0.5 + Math.random() * 0.5;
+                colors[i3] = temp;
+                colors[i3 + 1] = temp * 0.8;
+                colors[i3 + 2] = 1.0;
+            }
+            
+            starGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            starGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            
+            const starMaterial = new THREE.PointsMaterial({
+                size: 1,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            const stars = new THREE.Points(starGeometry, starMaterial);
+            scene.add(stars);
+        }
+        
+        function setupMouseControls() {
+            const canvas = renderer.domElement;
+            
+            canvas.addEventListener('mousedown', (event) => {
+                mouseDown = true;
+                mouseX = event.clientX;
+                mouseY = event.clientY;
+            });
+            
+            canvas.addEventListener('mousemove', (event) => {
+                if (!mouseDown || cameraMode !== 'free') return;
+                
+                const deltaX = event.clientX - mouseX;
+                const deltaY = event.clientY - mouseY;
+                
+                cameraTheta -= deltaX * 0.01;
+                cameraPhi = Math.max(0.1, Math.min(Math.PI - 0.1, cameraPhi - deltaY * 0.01));
+                
+                updateCameraPosition();
+                
+                mouseX = event.clientX;
+                mouseY = event.clientY;
+            });
+            
+            canvas.addEventListener('mouseup', () => {
+                mouseDown = false;
+            });
+            
+            canvas.addEventListener('wheel', (event) => {
+                event.preventDefault();
+                cameraDistance = Math.max(50, Math.min(1000, cameraDistance + event.deltaY * 0.5));
+                updateCameraPosition();
+            });
+        }
+        
+        function updateCameraPosition() {
+            if (cameraMode === 'free') {
+                camera.position.x = cameraDistance * Math.sin(cameraPhi) * Math.cos(cameraTheta);
+                camera.position.y = cameraDistance * Math.cos(cameraPhi);
+                camera.position.z = cameraDistance * Math.sin(cameraPhi) * Math.sin(cameraTheta);
+                camera.lookAt(0, 0, 0);
+            }
+        }
+        
+        function setCameraPreset(preset) {
+            cameraMode = preset;
+            document.getElementById('camera-mode').textContent = preset;
+            
+            switch(preset) {
+                case 'front':
+                    camera.position.set(0, 0, cameraDistance);
+                    break;
+                case 'side':
+                    camera.position.set(cameraDistance, 0, 0);
+                    break;
+                case 'top':
+                    camera.position.set(0, cameraDistance, 0);
+                    break;
+                case 'iso':
+                    camera.position.set(cameraDistance * 0.7, cameraDistance * 0.7, cameraDistance * 0.7);
+                    break;
+                default:
+                    cameraMode = 'free';
+                    updateCameraPosition();
+                    return;
+            }
+            
+            camera.lookAt(0, 0, 0);
+        }
+        
+        function generateModel() {
+            // Clear existing model
+            clearModel();
+            
+            // Create neutron star
+            createNeutronStar();
+            
+            // Create shock wave
+            createShockWaveStructure();
+            
+            // Create ejecta layers
+            createEjectaLayers();
+            
+            // Create magnetic field visualization
+            createMagneticField();
+            
+            // Update info display
+            updateInfoDisplay();
+        }
+        
+        function clearModel() {
+            // Remove existing objects
+            if (neutronStar) {
+                scene.remove(neutronStar);
+                neutronStar = null;
+            }
+            
+            if (shockWave) {
+                scene.remove(shockWave);
+                shockWave = null;
+            }
+            
+            ejectaLayers.forEach(layer => scene.remove(layer));
+            ejectaLayers = [];
+            
+            magneticFieldLines.forEach(line => scene.remove(line));
+            magneticFieldLines = [];
+        }
+        
+        function createNeutronStar() {
+            const radius = parseFloat(document.getElementById('neutronStarRadius').value) * 0.2;
+            
+            // Main neutron star body
+            const geometry = new THREE.SphereGeometry(radius, 32, 32);
+            const material = new THREE.MeshStandardMaterial({
+                color: 0x87ceeb,
+                emissive: 0x1e3a8a,
+                emissiveIntensity: 0.3,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+            
+            neutronStar = new THREE.Mesh(geometry, material);
+            scene.add(neutronStar);
+            
+            // Add pulsing glow
+            const glowGeometry = new THREE.SphereGeometry(radius * 1.2, 16, 16);
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: 0x4fc3f7,
+                transparent: true,
+                opacity: 0.3,
+                side: THREE.BackSide
+            });
+            const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+            neutronStar.add(glow);
+        }
+        
+        function createShockWaveStructure() {
+            const radius = parseFloat(document.getElementById('shockRadius').value);
+            const opacity = parseFloat(document.getElementById('shockOpacity').value);
+            
+            // Main shock sphere
+            const shockGeometry = new THREE.SphereGeometry(radius, 64, 64);
+            const shockMaterial = new THREE.MeshBasicMaterial({
+                color: 0xff4444,
+                transparent: true,
+                opacity: opacity * 0.3,
+                side: THREE.BackSide
+            });
+            
+            shockWave = new THREE.Group();
+            const mainShock = new THREE.Mesh(shockGeometry, shockMaterial);
+            shockWave.add(mainShock);
+            
+            // Add shock front detail
+            const frontGeometry = new THREE.SphereGeometry(radius * 1.02, 32, 32);
+            const frontMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffaa00,
+                transparent: true,
+                opacity: opacity * 0.6,
+                wireframe: true
+            });
+            const front = new THREE.Mesh(frontGeometry, frontMaterial);
+            shockWave.add(front);
+            
+            scene.add(shockWave);
+        }
+        
+        function createEjectaLayers() {
+            const layers = [
+                {
+                    name: 'inner',
+                    densityId: 'innerDensity',
+                    velocityId: 'innerVelocity',
+                    colorId: 'innerColor',
+                    minRadius: 20,
+                    maxRadius: 80
+                },
+                {
+                    name: 'middle',
+                    densityId: 'middleDensity',
+                    velocityId: 'middleVelocity',
+                    colorId: 'middleColor',
+                    minRadius: 60,
+                    maxRadius: 120
+                },
+                {
+                    name: 'outer',
+                    densityId: 'outerDensity',
+                    velocityId: 'outerVelocity',
+                    colorId: 'outerColor',
+                    minRadius: 100,
+                    maxRadius: 200
+                }
+            ];
+            
+            layers.forEach(layerConfig => {
+                const particleCount = parseInt(document.getElementById(layerConfig.densityId).value);
+                const velocity = parseInt(document.getElementById(layerConfig.velocityId).value);
+                const color = document.getElementById(layerConfig.colorId).value;
+                
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(particleCount * 3);
+                const colors = new Float32Array(particleCount * 3);
+                const sizes = new Float32Array(particleCount);
+                const velocities = [];
+                
+                const colorObj = new THREE.Color(color);
+                
+                for (let i = 0; i < particleCount; i++) {
+                    const i3 = i * 3;
+                    
+                    // Position in spherical shell
+                    const theta = Math.random() * Math.PI * 2;
+                    const phi = Math.acos(2 * Math.random() - 1);
+                    const r = layerConfig.minRadius + Math.random() * (layerConfig.maxRadius - layerConfig.minRadius);
+                    
+                    positions[i3] = r * Math.sin(phi) * Math.cos(theta);
+                    positions[i3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+                    positions[i3 + 2] = r * Math.cos(phi);
+                    
+                    // Color with variation
+                    const variation = 0.8 + Math.random() * 0.4;
+                    colors[i3] = colorObj.r * variation;
+                    colors[i3 + 1] = colorObj.g * variation;
+                    colors[i3 + 2] = colorObj.b * variation;
+                    
+                    sizes[i] = 0.5 + Math.random() * 2;
+                    
+                    // Store velocity for animation
+                    const speed = velocity * (0.8 + Math.random() * 0.4) * 0.001;
+                    velocities.push({
+                        x: (positions[i3] / r) * speed,
+                        y: (positions[i3 + 1] / r) * speed,
+                        z: (positions[i3 + 2] / r) * speed
+                    });
+                }
+                
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+                
+                // Store initial data for animation
+                geometry.userData = {
+                    velocities: velocities,
+                    initialPositions: positions.slice(),
+                    startTime: Date.now()
+                };
+                
+                const material = new THREE.PointsMaterial({
+                    size: 2,
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.8,
+                    blending: THREE.AdditiveBlending
+                });
+                
+                const layer = new THREE.Points(geometry, material);
+                ejectaLayers.push(layer);
+                scene.add(layer);
+            });
+        }
+        
+        function createMagneticField() {
+            const fieldStrength = parseFloat(document.getElementById('magneticField').value);
+            const lineCount = Math.floor(fieldStrength);
+            
+            for (let i = 0; i < lineCount; i++) {
+                const points = [];
+                const angle = (i / lineCount) * Math.PI * 2;
+                
+                // Create magnetic field line
+                for (let j = 0; j <= 50; j++) {
+                    const t = j / 50;
+                    const r = 10 + t * 150;
+                    const theta = angle + t * Math.PI * 4;
+                    
+                    points.push(new THREE.Vector3(
+                        r * Math.cos(theta) * Math.sin(t * Math.PI),
+                        r * Math.sin(theta) * Math.sin(t * Math.PI),
+                        r * Math.cos(t * Math.PI)
+                    ));
+                }
+                
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                const material = new THREE.LineBasicMaterial({
+                    color: 0x00ffff,
+                    transparent: true,
+                    opacity: 0.4
+                });
+                
+                const line = new THREE.Line(geometry, material);
+                magneticFieldLines.push(line);
+                scene.add(line);
+            }
+        }
+        
+        function updateInfoDisplay() {
+            // Count vertices and particles
+            let vertexCount = 0;
+            let particleCount = 0;
+            let layerCount = 0;
+            
+            scene.traverse((object) => {
+                if (object.geometry) {
+                    if (object.type === 'Points') {
+                        particleCount += object.geometry.attributes.position.count;
+                        layerCount++;
+                    } else {
+                        vertexCount += object.geometry.attributes.position.count;
+                    }
+                }
+            });
+            
+            document.getElementById('vertex-count').textContent = vertexCount.toLocaleString();
+            document.getElementById('particle-count').textContent = particleCount.toLocaleString();
+            document.getElementById('layer-count').textContent = layerCount;
+        }
+        
+        function randomizeParameters() {
+            // Randomize core parameters
+            document.getElementById('neutronStarRadius').value = (1 + Math.random() * 14).toFixed(1);
+            document.getElementById('coreDensity').value = (0.1 + Math.random() * 2.9).toFixed(1);
+            document.getElementById('magneticField').value = (12 + Math.random() * 4).toFixed(1);
+            
+            // Randomize shock wave
+            document.getElementById('shockRadius').value = Math.floor(50 + Math.random() * 450);
+            document.getElementById('shockVelocity').value = Math.floor(1000 + Math.random() * 29000);
+            document.getElementById('shockTemp').value = (6 + Math.random() * 2).toFixed(1);
+            document.getElementById('shockOpacity').value = (0.1 + Math.random() * 0.9).toFixed(2);
+            
+            // Randomize ejecta layers
+            document.getElementById('innerDensity').value = Math.floor(1000 + Math.random() * 49000);
+            document.getElementById('innerVelocity').value = Math.floor(2000 + Math.random() * 6000);
+            document.getElementById('middleDensity').value = Math.floor(5000 + Math.random() * 25000);
+            document.getElementById('middleVelocity').value = Math.floor(5000 + Math.random() * 7000);
+            document.getElementById('outerDensity').value = Math.floor(2000 + Math.random() * 18000);
+            document.getElementById('outerVelocity').value = Math.floor(8000 + Math.random() * 12000);
+            
+            // Randomize colors
+            document.getElementById('innerColor').value = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+            document.getElementById('middleColor').value = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+            document.getElementById('outerColor').value = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+            
+            // Update all value displays and regenerate
+            updateAllValueDisplays();
+            generateModel();
+        }
+        
+        function resetToDefaults() {
+            // Reset all sliders to default values
+            document.getElementById('neutronStarRadius').value = 8;
+            document.getElementById('coreDensity').value = 1.5;
+            document.getElementById('magneticField').value = 15;
+            document.getElementById('shockRadius').value = 150;
+            document.getElementById('shockVelocity').value = 10000;
+            document.getElementById('shockTemp').value = 7;
+            document.getElementById('shockOpacity').value = 0.6;
+            document.getElementById('innerDensity').value = 20000;
+            document.getElementById('innerVelocity').value = 4000;
+            document.getElementById('middleDensity').value = 15000;
+            document.getElementById('middleVelocity').value = 8000;
+            document.getElementById('outerDensity').value = 10000;
+            document.getElementById('outerVelocity').value = 15000;
+            document.getElementById('overallScale').value = 1.0;
+            document.getElementById('turbulence').value = 1.0;
+            document.getElementById('glowIntensity').value = 1.5;
+            
+            // Reset colors
+            document.getElementById('innerColor').value = '#ff4444';
+            document.getElementById('middleColor').value = '#44ff44';
+            document.getElementById('outerColor').value = '#4444ff';
+            
+            updateAllValueDisplays();
+            generateModel();
+        }
+        
+        function toggleAnimation() {
+            animationActive = !animationActive;
+        }
+        
+        function updateAnimation() {
+            if (!animationActive) return;
+            
+            const time = clock.getElapsedTime();
+            
+            // Animate neutron star rotation and pulsing
+            if (neutronStar) {
+                neutronStar.rotation.y = time * 2;
+                const pulse = Math.sin(time * 8) * 0.1 + 1;
+                neutronStar.scale.setScalar(pulse);
+            }
+            
+            // Animate shock wave expansion
+            if (shockWave) {
+                const expansion = Math.sin(time * 0.5) * 0.05 + 1;
+                shockWave.scale.setScalar(expansion);
+                shockWave.rotation.y = time * 0.2;
+            }
+            
+            // Animate ejecta particles
+            ejectaLayers.forEach((layer, index) => {
+                if (layer.geometry.userData.velocities) {
+                    const positions = layer.geometry.attributes.position.array;
+                    const velocities = layer.geometry.userData.velocities;
+                    const initialPos = layer.geometry.userData.initialPositions;
+                    
+                    for (let i = 0; i < positions.length; i += 3) {
+                        const idx = i / 3;
+                        if (velocities[idx]) {
+                            const expansionTime = time * (0.5 + index * 0.2);
+                            positions[i] = initialPos[i] + velocities[idx].x * expansionTime;
+                            positions[i + 1] = initialPos[i + 1] + velocities[idx].y * expansionTime;
+                            positions[i + 2] = initialPos[i + 2] + velocities[idx].z * expansionTime;
+                        }
+                    }
+                    layer.geometry.attributes.position.needsUpdate = true;
+                }
+            });
+            
+            // Animate magnetic field lines
+            magneticFieldLines.forEach((line, index) => {
+                line.rotation.z = time * (0.1 + index * 0.02);
+                const pulse = Math.sin(time * 3 + index) * 0.3 + 0.7;
+                line.material.opacity = pulse * 0.4;
+            });
+        }
+        
+        function exportModel() {
+            // Create export data
+            const modelData = {
+                neutronStar: neutronStar ? {
+                    radius: parseFloat(document.getElementById('neutronStarRadius').value),
+                    density: parseFloat(document.getElementById('coreDensity').value),
+                    magneticField: parseFloat(document.getElementById('magneticField').value)
+                } : null,
+                shockWave: shockWave ? {
+                    radius: parseFloat(document.getElementById('shockRadius').value),
+                    velocity: parseFloat(document.getElementById('shockVelocity').value),
+                    temperature: parseFloat(document.getElementById('shockTemp').value),
+                    opacity: parseFloat(document.getElementById('shockOpacity').value)
+                } : null,
+                ejecta: {
+                    inner: {
+                        density: parseInt(document.getElementById('innerDensity').value),
+                        velocity: parseInt(document.getElementById('innerVelocity').value),
+                        color: document.getElementById('innerColor').value
+                    },
+                    middle: {
+                        density: parseInt(document.getElementById('middleDensity').value),
+                        velocity: parseInt(document.getElementById('middleVelocity').value),
+                        color: document.getElementById('middleColor').value
+                    },
+                    outer: {
+                        density: parseInt(document.getElementById('outerDensity').value),
+                        velocity: parseInt(document.getElementById('outerVelocity').value),
+                        color: document.getElementById('outerColor').value
+                    }
+                },
+                settings: {
+                    scale: parseFloat(document.getElementById('overallScale').value),
+                    turbulence: parseFloat(document.getElementById('turbulence').value),
+                    glow: parseFloat(document.getElementById('glowIntensity').value)
+                }
+            };
+            
+            // Create and download JSON file
+            const dataStr = JSON.stringify(modelData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'supernova_model_' + Date.now() + '.json';
+            link.click();
+            URL.revokeObjectURL(url);
+            
+            alert('Model exported successfully!');
+        }
+        
+        function savePreset() {
+            const presetName = prompt('Enter preset name:');
+            if (!presetName) return;
+            
+            const preset = {
+                neutronStarRadius: document.getElementById('neutronStarRadius').value,
+                coreDensity: document.getElementById('coreDensity').value,
+                magneticField: document.getElementById('magneticField').value,
+                shockRadius: document.getElementById('shockRadius').value,
+                shockVelocity: document.getElementById('shockVelocity').value,
+                shockTemp: document.getElementById('shockTemp').value,
+                shockOpacity: document.getElementById('shockOpacity').value,
+                innerDensity: document.getElementById('innerDensity').value,
+                innerVelocity: document.getElementById('innerVelocity').value,
+                innerColor: document.getElementById('innerColor').value,
+                middleDensity: document.getElementById('middleDensity').value,
+                middleVelocity: document.getElementById('middleVelocity').value,
+                middleColor: document.getElementById('middleColor').value,
+                outerDensity: document.getElementById('outerDensity').value,
+                outerVelocity: document.getElementById('outerVelocity').value,
+                outerColor: document.getElementById('outerColor').value,
+                overallScale: document.getElementById('overallScale').value,
+                turbulence: document.getElementById('turbulence').value,
+                glowIntensity: document.getElementById('glowIntensity').value
+            };
+            
+            const presets = JSON.parse(localStorage.getItem('supernovaPresets') || '{}');
+            presets[presetName] = preset;
+            
+            alert('Preset saved successfully!');
+        }
+        
+        function updateAllValueDisplays() {
+            // Update all value displays
+            document.getElementById('neutronStarRadiusValue').textContent = document.getElementById('neutronStarRadius').value + ' km';
+            document.getElementById('coreDensityValue').textContent = document.getElementById('coreDensity').value + ' × 10¹⁵ g/cm³';
+            document.getElementById('magneticFieldValue').textContent = '10' + document.getElementById('magneticField').value + ' G';
+            document.getElementById('shockRadiusValue').textContent = document.getElementById('shockRadius').value + ' ly';
+            document.getElementById('shockVelocityValue').textContent = parseInt(document.getElementById('shockVelocity').value).toLocaleString() + ' km/s';
+            document.getElementById('shockTempValue').textContent = '10' + document.getElementById('shockTemp').value + ' K';
+            document.getElementById('shockOpacityValue').textContent = document.getElementById('shockOpacity').value;
+            document.getElementById('innerDensityValue').textContent = parseInt(document.getElementById('innerDensity').value).toLocaleString() + ' particles';
+            document.getElementById('innerVelocityValue').textContent = parseInt(document.getElementById('innerVelocity').value).toLocaleString() + ' km/s';
+            document.getElementById('middleDensityValue').textContent = parseInt(document.getElementById('middleDensity').value).toLocaleString() + ' particles';
+            document.getElementById('middleVelocityValue').textContent = parseInt(document.getElementById('middleVelocity').value).toLocaleString() + ' km/s';
+            document.getElementById('outerDensityValue').textContent = parseInt(document.getElementById('outerDensity').value).toLocaleString() + ' particles';
+            document.getElementById('outerVelocityValue').textContent = parseInt(document.getElementById('outerVelocity').value).toLocaleString() + ' km/s';
+            document.getElementById('overallScaleValue').textContent = document.getElementById('overallScale').value + 'x';
+            document.getElementById('turbulenceValue').textContent = document.getElementById('turbulence').value;
+            document.getElementById('glowIntensityValue').textContent = document.getElementById('glowIntensity').value;
+        }
+        
+        function setupSliderListeners() {
+            const sliders = document.querySelectorAll('.control-slider');
+            sliders.forEach(slider => {
+                slider.addEventListener('input', () => {
+                    updateAllValueDisplays();
+                    generateModel();
+                });
+            });
+            
+            const colorPickers = document.querySelectorAll('.color-picker');
+            colorPickers.forEach(picker => {
+                picker.addEventListener('input', () => {
+                    generateModel();
+                });
+            });
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            updateAnimation();
+            renderer.render(scene, camera);
+        }
+        
+        function handleResize() {
+            camera.aspect = (window.innerWidth - 320) / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth - 320, window.innerHeight);
+        }
+        
+        // Initialize everything
+        window.addEventListener('load', () => {
+            initThreeJS();
+            setupSliderListeners();
+            updateAllValueDisplays();
+        });
+        
+        window.addEventListener('resize', handleResize);
+        
+        console.log("Advanced 3D Supernova Model Builder Ready!");
+        console.log("Use the controls to customize your supernova model");
+        console.log("Mouse: Click and drag to rotate camera, scroll to zoom");
+    </script>
+</body>
+</html>
