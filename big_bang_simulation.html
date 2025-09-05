@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Big Bang Simulation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: white;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        canvas {
+            display: block;
+            background: radial-gradient(circle at center, #000428 0%, #004e92 100%);
+        }
+
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #444;
+        }
+
+        #timeline {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #444;
+        }
+
+        button {
+            background: #1a73e8;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background: #2b7de9;
+        }
+
+        .slider {
+            width: 200px;
+            margin: 10px 0;
+        }
+
+        .phase {
+            font-weight: bold;
+            color: #ff6b6b;
+            margin-bottom: 5px;
+        }
+
+        .time {
+            color: #4ecdc4;
+            font-size: 12px;
+        }
+
+        #stats {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #444;
+            min-width: 200px;
+        }
+
+        .stat-item {
+            margin: 5px 0;
+            font-size: 12px;
+        }
+
+        .stat-value {
+            color: #ffd93d;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <canvas id="canvas"></canvas>
+        
+        <div id="controls">
+            <h3>Big Bang Simulation</h3>
+            <button id="startBtn">Start Big Bang</button>
+            <button id="resetBtn">Reset Universe</button>
+            <button id="pauseBtn">Pause/Resume</button>
+            <br>
+            <label>Speed: <input type="range" class="slider" id="speedSlider" min="0.1" max="3" step="0.1" value="1"></label>
+            <br>
+            <label>Particle Density: <input type="range" class="slider" id="densitySlider" min="1000" max="10000" step="500" value="5000"></label>
+        </div>
+
+        <div id="stats">
+            <div class="stat-item">Temperature: <span class="stat-value" id="temperature">∞ K</span></div>
+            <div class="stat-item">Age: <span class="stat-value" id="age">0 seconds</span></div>
+            <div class="stat-item">Scale Factor: <span class="stat-value" id="scale">0</span></div>
+            <div class="stat-item">Particles: <span class="stat-value" id="particleCount">0</span></div>
+            <div class="stat-item">Matter Density: <span class="stat-value" id="density">∞ kg/m³</span></div>
+            <div class="stat-item">Expansion Rate: <span class="stat-value" id="hubble">∞ km/s/Mpc</span></div>
+        </div>
+
+        <div id="timeline">
+            <div class="phase" id="currentPhase">Planck Epoch</div>
+            <div class="time" id="currentTime">t < 10⁻⁴³ seconds</div>
+            <div id="phaseDescription">Quantum gravity dominates. Space and time as we know them don't exist yet.</div>
+        </div>
+    </div>
+
+    <script>
+        class BigBangSimulation {
+            constructor() {
+                this.canvas = document.getElementById('canvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+
+                // Physics constants and variables
+                this.time = 0;
+                this.isRunning = false;
+                this.speed = 1;
+                this.particles = [];
+                this.maxParticles = 5000;
+                this.universeRadius = 1;
+                this.temperature = Infinity;
+                this.scaleFactor = 0;
+                this.currentPhase = 0;
+                
+                // Cosmological phases
+                this.phases = [
+                    {
+                        name: "Planck Epoch",
+                        timeRange: "t < 10⁻⁴³ s",
+                        startTime: 0,
+                        endTime: 1e-43,
+                        description: "Quantum gravity dominates. Space and time as we know them don't exist yet.",
+                        temperature: 1e32,
+                        color: "#ffffff"
+                    },
+                    {
+                        name: "Grand Unification",
+                        timeRange: "10⁻⁴³ - 10⁻³⁶ s",
+                        startTime: 1e-43,
+                        endTime: 1e-36,
+                        description: "Strong force separates from electroweak force.",
+                        temperature: 1e27,
+                        color: "#ff00ff"
+                    },
+                    {
+                        name: "Inflation",
+                        timeRange: "10⁻³⁶ - 10⁻³² s",
+                        startTime: 1e-36,
+                        endTime: 1e-32,
+                        description: "Exponential expansion of space. Universe grows by factor of 10²⁶!",
+                        temperature: 1e22,
+                        color: "#ffff00"
+                    },
+                    {
+                        name: "Electroweak",
+                        timeRange: "10⁻³² - 10⁻¹² s",
+                        startTime: 1e-32,
+                        endTime: 1e-12,
+                        description: "Electromagnetic and weak forces separate.",
+                        temperature: 1e15,
+                        color: "#00ffff"
+                    },
+                    {
+                        name: "Quark Epoch",
+                        timeRange: "10⁻¹² - 10⁻⁶ s",
+                        startTime: 1e-12,
+                        endTime: 1e-6,
+                        description: "Quarks and gluons form. Higgs field gives particles mass.",
+                        temperature: 1e12,
+                        color: "#ff8800"
+                    },
+                    {
+                        name: "Hadron Epoch",
+                        timeRange: "10⁻⁶ - 1 s",
+                        startTime: 1e-6,
+                        endTime: 1,
+                        description: "Quarks combine to form protons and neutrons.",
+                        temperature: 1e10,
+                        color: "#ff4400"
+                    },
+                    {
+                        name: "Nucleosynthesis",
+                        timeRange: "1 s - 20 min",
+                        startTime: 1,
+                        endTime: 1200,
+                        description: "Light nuclei form: deuterium, helium, lithium.",
+                        temperature: 1e9,
+                        color: "#ff0000"
+                    },
+                    {
+                        name: "Photon Epoch",
+                        timeRange: "20 min - 380,000 years",
+                        startTime: 1200,
+                        endTime: 1.2e13,
+                        description: "Universe is opaque plasma. Photons dominate energy density.",
+                        temperature: 3000,
+                        color: "#ffaa00"
+                    },
+                    {
+                        name: "Recombination",
+                        timeRange: "380,000 years",
+                        startTime: 1.2e13,
+                        endTime: 1.5e13,
+                        description: "Electrons combine with nuclei. Universe becomes transparent!",
+                        temperature: 3000,
+                        color: "#ffffff"
+                    },
+                    {
+                        name: "Star Formation",
+                        timeRange: "> 380,000 years",
+                        startTime: 1.5e13,
+                        endTime: Infinity,
+                        description: "First stars form. Dark Age ends. Galaxies begin to form.",
+                        temperature: 2.7,
+                        color: "#aaaaff"
+                    }
+                ];
+
+                this.setupEventListeners();
+                this.initializeParticles();
+                this.updateDisplay();
+            }
+
+            setupEventListeners() {
+                document.getElementById('startBtn').addEventListener('click', () => this.start());
+                document.getElementById('resetBtn').addEventListener('click', () => this.reset());
+                document.getElementById('pauseBtn').addEventListener('click', () => this.togglePause());
+                document.getElementById('speedSlider').addEventListener('input', (e) => {
+                    this.speed = parseFloat(e.target.value);
+                });
+                document.getElementById('densitySlider').addEventListener('input', (e) => {
+                    this.maxParticles = parseInt(e.target.value);
+                    if (!this.isRunning) {
+                        this.initializeParticles();
+                    }
+                });
+
+                window.addEventListener('resize', () => {
+                    this.canvas.width = window.innerWidth;
+                    this.canvas.height = window.innerHeight;
+                });
+            }
+
+            initializeParticles() {
+                this.particles = [];
+                const centerX = this.canvas.width / 2;
+                const centerY = this.canvas.height / 2;
+                
+                for (let i = 0; i < this.maxParticles; i++) {
+                    // Start all particles at the center (singularity)
+                    const angle = Math.random() * 2 * Math.PI;
+                    const distance = Math.random() * 2; // Very small initial spread
+                    
+                    this.particles.push({
+                        x: centerX + Math.cos(angle) * distance,
+                        y: centerY + Math.sin(angle) * distance,
+                        originalX: centerX + Math.cos(angle) * distance,
+                        originalY: centerY + Math.sin(angle) * distance,
+                        vx: Math.cos(angle) * 0.1,
+                        vy: Math.sin(angle) * 0.1,
+                        mass: Math.random() * 0.1 + 0.05,
+                        type: this.getParticleType(),
+                        energy: Math.random() * 100 + 50,
+                        age: 0
+                    });
+                }
+            }
+
+            getParticleType() {
+                const rand = Math.random();
+                if (rand < 0.3) return 'quark';
+                if (rand < 0.5) return 'electron';
+                if (rand < 0.7) return 'photon';
+                if (rand < 0.85) return 'proton';
+                return 'neutron';
+            }
+
+            getParticleColor(particle) {
+                const phase = this.phases[this.currentPhase];
+                const baseColor = phase.color;
+                
+                // Vary color based on particle energy and type
+                const energyFactor = Math.min(particle.energy / 100, 1);
+                
+                switch (particle.type) {
+                    case 'quark':
+                        return `rgba(255, ${Math.floor(100 * energyFactor)}, ${Math.floor(100 * energyFactor)}, 0.8)`;
+                    case 'electron':
+                        return `rgba(0, ${Math.floor(255 * energyFactor)}, 255, 0.6)`;
+                    case 'photon':
+                        return `rgba(255, 255, ${Math.floor(255 * energyFactor)}, 0.9)`;
+                    case 'proton':
+                        return `rgba(255, ${Math.floor(200 * energyFactor)}, 0, 0.7)`;
+                    case 'neutron':
+                        return `rgba(${Math.floor(200 * energyFactor)}, ${Math.floor(200 * energyFactor)}, 255, 0.7)`;
+                    default:
+                        return baseColor;
+                }
+            }
+
+            start() {
+                if (!this.isRunning) {
+                    this.isRunning = true;
+                    this.animate();
+                }
+            }
+
+            togglePause() {
+                this.isRunning = !this.isRunning;
+                if (this.isRunning) {
+                    this.animate();
+                }
+            }
+
+            reset() {
+                this.isRunning = false;
+                this.time = 0;
+                this.universeRadius = 1;
+                this.scaleFactor = 0;
+                this.currentPhase = 0;
+                this.initializeParticles();
+                this.updateDisplay();
+                this.draw();
+            }
+
+            updatePhysics() {
+                // Update time
+                this.time += 0.001 * this.speed;
+                
+                // Determine current phase
+                for (let i = 0; i < this.phases.length; i++) {
+                    if (this.time >= this.phases[i].startTime && 
+                        (i === this.phases.length - 1 || this.time < this.phases[i + 1].startTime)) {
+                        this.currentPhase = i;
+                        break;
+                    }
+                }
+
+                const phase = this.phases[this.currentPhase];
+                
+                // Calculate scale factor (expansion of universe)
+                if (this.currentPhase === 2) { // Inflation
+                    this.scaleFactor = Math.pow(10, (this.time - phase.startTime) * 1e35);
+                } else if (this.time > phase.startTime) {
+                    this.scaleFactor = Math.pow(this.time / phase.startTime, 0.5);
+                }
+
+                // Update universe radius
+                this.universeRadius = Math.min(this.scaleFactor * 50, Math.max(this.canvas.width, this.canvas.height));
+
+                // Calculate temperature (decreases with expansion)
+                this.temperature = phase.temperature / Math.max(this.scaleFactor, 1);
+
+                // Update particles based on current physics
+                const centerX = this.canvas.width / 2;
+                const centerY = this.canvas.height / 2;
+
+                this.particles.forEach((particle, index) => {
+                    // Hubble expansion
+                    const dx = particle.x - centerX;
+                    const dy = particle.y - centerY;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance > 0) {
+                        const hubbleConstant = this.scaleFactor * 0.001;
+                        const expansionVx = (dx / distance) * hubbleConstant;
+                        const expansionVy = (dy / distance) * hubbleConstant;
+                        
+                        particle.vx += expansionVx * 0.01;
+                        particle.vy += expansionVy * 0.01;
+                    }
+
+                    // Apply some damping to prevent runaway velocities
+                    particle.vx *= 0.999;
+                    particle.vy *= 0.999;
+
+                    // Update position
+                    particle.x += particle.vx * this.speed;
+                    particle.y += particle.vy * this.speed;
+
+                    // Particle interactions and decay
+                    particle.age += this.speed;
+                    particle.energy *= 0.9999; // Energy loss over time
+
+                    // Keep particles within reasonable bounds
+                    const maxDistance = Math.max(this.canvas.width, this.canvas.height);
+                    if (distance > maxDistance) {
+                        particle.x = centerX + (dx / distance) * maxDistance;
+                        particle.y = centerY + (dy / distance) * maxDistance;
+                    }
+                });
+
+                // Phase-specific effects
+                if (this.currentPhase === 2) { // Inflation
+                    this.particles.forEach(particle => {
+                        const centerDistance = Math.sqrt(
+                            Math.pow(particle.x - centerX, 2) + 
+                            Math.pow(particle.y - centerY, 2)
+                        );
+                        if (centerDistance > 0) {
+                            const inflationFactor = 1.001;
+                            particle.x = centerX + (particle.x - centerX) * inflationFactor;
+                            particle.y = centerY + (particle.y - centerY) * inflationFactor;
+                        }
+                    });
+                }
+            }
+
+            draw() {
+                // Clear canvas with cosmic background
+                this.ctx.fillStyle = 'rgba(0, 4, 40, 0.1)';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // Draw cosmic microwave background if appropriate phase
+                if (this.currentPhase >= 7) {
+                    this.drawCMB();
+                }
+
+                // Draw particles
+                this.particles.forEach(particle => {
+                    const size = Math.max(0.5, particle.mass * 3 / Math.max(this.scaleFactor * 0.1, 1));
+                    
+                    this.ctx.globalCompositeOperation = 'screen';
+                    this.ctx.fillStyle = this.getParticleColor(particle);
+                    this.ctx.beginPath();
+                    this.ctx.arc(particle.x, particle.y, size, 0, 2 * Math.PI);
+                    this.ctx.fill();
+
+                    // Add glow effect for high-energy particles
+                    if (particle.energy > 80) {
+                        this.ctx.globalCompositeOperation = 'lighter';
+                        this.ctx.fillStyle = `rgba(255, 255, 255, 0.1)`;
+                        this.ctx.beginPath();
+                        this.ctx.arc(particle.x, particle.y, size * 3, 0, 2 * Math.PI);
+                        this.ctx.fill();
+                    }
+                });
+
+                this.ctx.globalCompositeOperation = 'source-over';
+
+                // Draw universe boundary
+                const centerX = this.canvas.width / 2;
+                const centerY = this.canvas.height / 2;
+                this.ctx.strokeStyle = `rgba(255, 255, 255, 0.1)`;
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.arc(centerX, centerY, this.universeRadius, 0, 2 * Math.PI);
+                this.ctx.stroke();
+            }
+
+            drawCMB() {
+                // Draw cosmic microwave background radiation
+                const imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+                const data = imageData.data;
+
+                for (let i = 0; i < data.length; i += 4) {
+                    if (Math.random() < 0.001) {
+                        const intensity = Math.random() * 20;
+                        data[i] += intensity;     // Red
+                        data[i + 1] += intensity * 0.8; // Green
+                        data[i + 2] += intensity * 0.6; // Blue
+                    }
+                }
+
+                this.ctx.putImageData(imageData, 0, 0);
+            }
+
+            updateDisplay() {
+                const phase = this.phases[this.currentPhase];
+                
+                document.getElementById('currentPhase').textContent = phase.name;
+                document.getElementById('currentTime').textContent = phase.timeRange;
+                document.getElementById('phaseDescription').textContent = phase.description;
+                
+                document.getElementById('temperature').textContent = 
+                    this.temperature === Infinity ? '∞ K' : 
+                    this.temperature > 1e6 ? (this.temperature / 1e9).toFixed(2) + ' GK' :
+                    this.temperature > 1000 ? (this.temperature / 1e6).toFixed(2) + ' MK' :
+                    this.temperature.toFixed(1) + ' K';
+                
+                document.getElementById('age').textContent = 
+                    this.time < 1e-30 ? this.time.toExponential(2) + ' s' :
+                    this.time < 1 ? this.time.toFixed(6) + ' s' :
+                    this.time < 3600 ? (this.time / 60).toFixed(2) + ' min' :
+                    this.time < 86400 ? (this.time / 3600).toFixed(2) + ' hours' :
+                    this.time < 31536000 ? (this.time / 86400).toFixed(2) + ' days' :
+                    (this.time / 31536000).toFixed(2) + ' years';
+                
+                document.getElementById('scale').textContent = 
+                    this.scaleFactor === 0 ? '0' : 
+                    this.scaleFactor > 1e6 ? this.scaleFactor.toExponential(2) :
+                    this.scaleFactor.toFixed(3);
+                
+                document.getElementById('particleCount').textContent = this.particles.length.toLocaleString();
+                
+                const density = this.scaleFactor > 0 ? (1e20 / Math.pow(this.scaleFactor, 3)) : Infinity;
+                document.getElementById('density').textContent = 
+                    density === Infinity ? '∞ kg/m³' :
+                    density > 1e10 ? density.toExponential(2) + ' kg/m³' :
+                    density.toFixed(2) + ' kg/m³';
+                
+                const hubbleRate = this.scaleFactor > 0 ? (70 * Math.sqrt(this.scaleFactor)) : Infinity;
+                document.getElementById('hubble').textContent = 
+                    hubbleRate === Infinity ? '∞ km/s/Mpc' :
+                    hubbleRate.toFixed(1) + ' km/s/Mpc';
+            }
+
+            animate() {
+                if (!this.isRunning) return;
+
+                this.updatePhysics();
+                this.draw();
+                this.updateDisplay();
+
+                requestAnimationFrame(() => this.animate());
+            }
+        }
+
+        // Initialize simulation when page loads
+        window.addEventListener('load', () => {
+            new BigBangSimulation();
+        });
+    </script>
+</body>
+</html>
